@@ -1,0 +1,475 @@
+---
+title: "colle 1 resazurina"
+format: html
+editor: visual
+---
+
+# pacotes
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(rstatix)
+library(plotly)
+library(rlang)
+```
+
+# carregando arquivos
+
+```{r}
+fluorescencia_data_1 = read_excel("colle 2 placa.xlsx",
+                      sheet = "Fluorescencia")
+
+head(fluorescencia_data_1)
+
+abs_data_1 = read_excel("colle 2 placa.xlsx",
+                      sheet = "Absorbancia")
+
+head(abs_data_1)
+```
+
+# incluindo tratamentos
+
+```{r}
+fluo_completo_1 = fluorescencia_data_1 |> 
+   mutate(meio = case_when(
+      coluna %in% c(1, 4, 7) ~ "YB",
+      coluna %in% c(2, 5, 8) ~ "CZK",
+      coluna %in% c(3, 6, 9) ~ "CM"
+    ))|> 
+     mutate(concentracao = case_when(
+      coluna %in% c(1, 2, 3) ~ 100000,
+      coluna %in% c(4, 5, 6) ~ 50000,
+      coluna %in% c(7, 8, 9) ~ 10000
+    )) |>  
+  mutate(tratamento = case_when(
+      linha %in% c("A", "B", "C") ~ "fungo",
+      linha %in% c("D", "E", "F") ~ "fungicida",
+      linha == "G" ~ "b_fungicida",
+      linha == "H" ~ "b_meio",
+    ))
+  
+```
+
+```{r}
+abs_completo_1 = abs_data_1 |> 
+   mutate(meio = case_when(
+      coluna %in% c(1, 4, 7) ~ "YB",
+      coluna %in% c(2, 5, 8) ~ "CZK",
+      coluna %in% c(3, 6, 9) ~ "CM"
+    ))|> 
+     mutate(concentracao = case_when(
+      coluna %in% c(1, 2, 3) ~ 100000,
+      coluna %in% c(4, 5, 6) ~ 50000,
+      coluna %in% c(7, 8, 9) ~ 10000
+    )) |> 
+  mutate(tratamento = case_when(
+      linha %in% c("A", "B", "C") ~ "fungo",
+      linha %in% c("D", "E", "F") ~ "fungicida",
+      linha == "G" ~ "b_fungicida",
+      linha == "H" ~ "b_meio",
+    )) 
+```
+
+# visualização fluorescência
+
+```{r}
+fluo_completo_1 |> 
+  ggplot(aes(x = leitura, 
+             y = UFR_sinal, 
+             color =  tratamento))+
+  geom_jitter()+
+  #geom_smooth()+
+  facet_grid(concentracao~meio)
+  
+```
+
+# visualização absorbância dados brutos
+
+```{r}
+abs_completo_1 |> 
+  #filter(meio == "YB") |> 
+  group_by(tratamento, leitura, concentracao, meio, comprimento_onda) |> 
+  summarise(mean_abs= mean(abs), .groups = "keep") |>
+  mutate(comprimento_onda = as.character(comprimento_onda),
+         concentracao = as.character(concentracao)) |> 
+  ggplot(aes(x = leitura, 
+             y = mean_abs, 
+             color =  concentracao,
+             shape = tratamento))+
+  geom_jitter()+
+  #geom_smooth()+
+  facet_grid(meio~comprimento_onda)
+```
+
+# visualização absorbância concentração de 10\^4
+
+```{r}
+abs_completo_1 |> 
+  filter(concentracao == 10000) |> 
+  group_by(tratamento, leitura, concentracao, meio, comprimento_onda) |> 
+  summarise(mean_abs= mean(abs), .groups = "keep") |>
+  mutate(comprimento_onda = as.character(comprimento_onda),
+         concentracao = as.character(concentracao)) |> 
+  ggplot(aes(x = leitura, 
+             y = mean_abs, 
+             color =  tratamento))+
+  #geom_jitter()+
+  geom_smooth()+
+  facet_grid(meio~comprimento_onda)
+```
+
+# visualização absorbância concentração de 5X10\^4
+
+```{r}
+abs_completo_1 |> 
+  filter(concentracao == 50000) |> 
+  group_by(tratamento, leitura, concentracao, meio, comprimento_onda) |> 
+  summarise(mean_abs= mean(abs), .groups = "keep") |>
+  mutate(comprimento_onda = as.character(comprimento_onda),
+         concentracao = as.character(concentracao)) |> 
+  ggplot(aes(x = leitura, 
+             y = mean_abs, 
+             color =  tratamento))+
+  #geom_jitter()+
+  geom_smooth()+
+  facet_grid(meio~comprimento_onda)
+```
+
+# visualização absorbância concentração de 10\^5
+
+```{r}
+abs_completo_1 |> 
+  filter(concentracao == 100000) |> 
+  group_by(tratamento, leitura, concentracao, meio, comprimento_onda) |> 
+  summarise(mean_abs= mean(abs), .groups = "keep") |>
+  mutate(comprimento_onda = as.character(comprimento_onda),
+         concentracao = as.character(concentracao)) |> 
+  ggplot(aes(x = leitura, 
+             y = mean_abs, 
+             color =  tratamento))+
+  #geom_jitter()+
+  geom_smooth()+
+  facet_grid(meio~comprimento_onda)
+```
+
+# superfície resposta
+
+```{r}
+abs_completo_1 |> 
+  filter(
+    tratamento == "fungo",
+    concentracao == 1e+05,
+         meio == "YB") |> 
+  group_by(tratamento, leitura, concentracao, meio, comprimento_onda) |> 
+  summarise(mean_abs= mean(abs), .groups = "keep") |> 
+  plot_ly(
+  x = ~comprimento_onda,
+  y = ~leitura,
+  z = ~mean_abs,
+  color = ~mean_abs,
+  type = "scatter3d",
+  mode = "markers"
+) %>%
+  layout(
+    title = "Tratamento: fungo",
+    scene = list(
+      xaxis = list(title = "leituras"),
+      yaxis = list(title = "Concentração"),
+      zaxis = list(title = "Absorbância")
+    )
+  )
+
+
+```
+
+# superfície resposta
+
+```{r}
+abs_completo_1 %>% 
+  # Etapa 1: Filtrar e sumarizar os dados
+  filter(
+    tratamento == "fungo",
+    concentracao == 1e+05,
+    meio == "YB"
+  ) %>% 
+  group_by(leitura, comprimento_onda) %>% 
+  summarise(mean_abs = mean(abs), .groups = "drop") %>%
+  
+  # Etapa 2: Pivotar os dados para o formato de matriz (largo)
+  pivot_wider(
+    names_from = leitura,
+    values_from = mean_abs,
+    id_cols = comprimento_onda
+  ) %>%
+  
+  # Etapa 3: Bloco final que agora funciona com o pipe %>%
+  {
+    x_axis <- as.numeric(colnames(.)[-1])
+    y_axis <- .[[1]]
+    z_matrix <- as.matrix(.[,-1])
+    
+    plot_ly(
+      x = ~x_axis,
+      y = ~y_axis,
+      z = ~z_matrix,
+      type = "surface",
+      colorscale = "Viridis"
+    ) %>%
+      layout(
+        title = "Superfície: Fungo, Conc: 100.000, Meio: YB",
+        scene = list(
+          xaxis = list(title = "Leitura"),
+          yaxis = list(title = "Comprimento de Onda (nm)"),
+          zaxis = list(title = "Absorbância Média")
+        )
+      )
+  }
+```
+
+# multiplos gráficos de superfície resposta
+
+```{r}
+#| label: plotar-todos-os-graficos
+#| fig-cap: "Todos os gráficos de superfície de resposta combinados."
+
+
+# --- 2. FUNÇÃO CORRIGIDA ---
+# Corrigimos a linha 'format()' para ser mais explícita e remover o aviso.
+plotar_superficie_3d <- function(dados, trat_selecionado, conc_selecionada, meio_selecionado) {
+  dados_filtrados <- dados %>%
+    filter(tratamento == trat_selecionado, concentracao == conc_selecionada, meio == meio_selecionado)
+  
+  if (nrow(dados_filtrados) == 0) {
+    # Retorna NULL se não houver dados, para não quebrar o pmap
+    return(NULL)
+  }
+  
+  # CORREÇÃO: Adicionado decimal.mark = "," para resolver o aviso
+  titulo_grafico <- paste0(
+    "Superfície: ", trat_selecionado, 
+    " | Conc: ", format(conc_selecionada, scientific = FALSE, big.mark = ".", decimal.mark = ","), 
+    " | Meio: ", meio_selecionado
+  )
+  
+  dados_filtrados %>%
+    group_by(leitura, comprimento_onda) %>%
+    summarise(mean_abs = mean(abs), .groups = "drop") %>%
+    pivot_wider(names_from = leitura, values_from = mean_abs, id_cols = comprimento_onda) %>%
+    {
+      x_axis <- as.numeric(colnames(.)[-1])
+      y_axis <- .[[1]]
+      z_matrix <- as.matrix(.[,-1])
+      
+      plot_ly(x = ~x_axis, y = ~y_axis, z = ~z_matrix, type = "surface", showscale = FALSE) %>%
+        layout(
+          title = list(text = titulo_grafico, y = 0.98, font = list(size = 10)),
+          scene = list(
+            xaxis = list(title = "Leitura", tickfont = list(size=8)),
+            yaxis = list(title = "Comp. Onda (nm)", tickfont = list(size=8)),
+            zaxis = list(title = "Abs Média", tickfont = list(size=8))
+          )
+        )
+    }
+}
+
+# --- 3. CRIAR A LISTA DE GRÁFICOS (como você já fez) ---
+combinacoes <- abs_completo %>% distinct(tratamento, concentracao, meio)
+
+lista_de_todos_os_plots_1 <- pmap(list(
+  trat_selecionado = combinacoes$tratamento,
+  conc_selecionada = combinacoes$concentracao,
+  meio_selecionado = combinacoes$meio
+), .f = ~plotar_superficie_3d(
+  dados = abs_completo,
+  trat_selecionado = ..1,
+  conc_selecionada = ..2,
+  meio_selecionado = ..3
+))
+
+# Remove quaisquer resultados nulos (casos onde não havia dados)
+lista_de_todos_os_plots_1 <- compact(lista_de_todos_os_plots)
+
+# --- 4. MOSTRAR OS GRÁFICOS! ---
+# Agora usamos subplot() para combinar e exibir todos os gráficos da lista
+if (length(lista_de_todos_os_plots_1) > 0) {
+  subplot(lista_de_todos_os_plots_1, nrows = ceiling(length(lista_de_todos_os_plots_1) / 3)) %>%
+    layout(title = "<b>Visualização de Todas as Combinações</b>")
+} else {
+  print("Nenhum gráfico foi gerado.")
+}
+```
+
+```{r}
+lista_de_todos_os_plots_1[[1]]
+lista_de_todos_os_plots_1[[2]]
+lista_de_todos_os_plots_1[[3]]
+```
+
+# criando a função para o calculo da absorbância
+
+```{r}
+
+# Esta função aplica a fórmula completa:
+# % Redução = ({[(εox λ2)(A λ1)] - [(εox λ1)(A λ2)]} / {[(εred λ1)(A' λ2)] - [(εred λ2)(A' λ1)]}) * 100
+# Onde A é a absorbância do poço de teste
+# A' é a absorbância do controlo negativo (poço sem células)
+
+# função para calculo
+calcular_reducao_resazurina <- function(dados,                         # banco de dados
+                                        coluna_absorbancia,            # variável resposta
+                                        coluna_comprimento_onda,       # coluna que indica o comprimento de onda 570 ou 600
+                                        coluna_tratamento,             # coluna que indica quais são os tratamento
+                                        string_controle_negativo,      # dentro da coluna_tratamento qual é a strig que indica o controle negativo
+                                        strata_col = NULL) {           # variáveis de estratificação ex.: fungicidas, isolados
+
+  # --- Constantes de extinção molar ---
+  epsilon_ox_570 <- 80586
+  epsilon_ox_600 <- 117216
+  epsilon_red_570 <- 155677
+  epsilon_red_600 <- 14652
+  # ------------------------------------
+
+  tratamento_str <- rlang::as_name(enquo(coluna_tratamento))
+
+  stopifnot(
+    "O argumento 'dados' deve ser um data.frame" = is.data.frame(dados),
+    "A 'string_controle_negativo' deve ser fornecida" = !missing(string_controle_negativo)
+  )
+# separa os dados do controle negativo
+  .processa_grupo <- function(sub_dados) {
+    controle_df <- sub_dados %>%
+      filter({{ coluna_tratamento }} == string_controle_negativo)
+
+# filtra os dados pelo comprimento de onda do controle negativo
+    abs_controlo_570 <- controle_df %>% filter({{ coluna_comprimento_onda }} == 570) %>% summarise(mean_abs = mean({{ coluna_absorbancia }}, na.rm = TRUE)) %>% pull(mean_abs)
+    abs_controlo_600 <- controle_df %>% filter({{ coluna_comprimento_onda }} == 600) %>% summarise(mean_abs = mean({{ coluna_absorbancia }}, na.rm = TRUE)) %>% pull(mean_abs)
+
+    if (length(abs_controlo_570) == 0 || is.na(abs_controlo_570) || length(abs_controlo_600) == 0 || is.na(abs_controlo_600)) {
+        group_id <- if (!is.null(strata_col)) paste(sub_dados[1, strata_col], collapse = " | ") else "[geral]"
+        warning(paste("Controle negativo não encontrado para 570/600 nm no grupo:", group_id, ". Pulando este grupo."))
+        return(NULL)
+    }
+# calculando o denominador
+    denominador <- (epsilon_red_570 * abs_controlo_600) - (epsilon_red_600 * abs_controlo_570)
+
+    if (denominador == 0) {
+      warning("Denominador do cálculo é zero. Impossível calcular a redução.")
+      return(NULL)
+    }
+    
+    sub_dados %>%
+      filter({{ coluna_tratamento }} != string_controle_negativo) %>%
+      pivot_wider(
+        id_cols = all_of(c(tratamento_str, strata_col)), 
+        names_from = {{ coluna_comprimento_onda }},
+        values_from = {{ coluna_absorbancia }},
+        names_prefix = "abs_",
+        values_fn = mean # <-- ADIÇÃO CRÍTICA PARA CALCULAR A MÉDIA DAS RÉPLICAS
+      ) %>%
+      mutate(
+        numerador = (epsilon_ox_600 * abs_570) - (epsilon_ox_570 * abs_600),
+        percentagem_reducao = (numerador / denominador) * 100
+      ) %>%
+      select(
+        all_of(c(tratamento_str, strata_col)),
+        percentagem_reducao
+      )
+  }
+
+  if (!is.null(strata_col)) {
+    df_agrupado <- dados %>% 
+      group_by(across(all_of(strata_col)))
+      
+    df_split <- group_split(df_agrupado)
+    
+    resultados_lista <- lapply(df_split, .processa_grupo)
+    resultados_df <- bind_rows(resultados_lista)
+  } else {
+    resultados_df <- .processa_grupo(dados)
+  }
+
+  return(as_tibble(resultados_df))
+}
+```
+
+# rodando a função
+
+```{r}
+resultados_finais_1 <- calcular_reducao_resazurina(
+  dados = abs_completo_1,
+  coluna_absorbancia = abs,
+  coluna_comprimento_onda = comprimento_onda,
+  coluna_tratamento = tratamento,
+  string_controle_negativo = "b_meio",
+  strata_col = c("leitura", "meio", "concentracao") 
+)
+
+# Verifique o resultado final
+print(resultados_finais_1)
+```
+
+# gráfico do calculo da absorbância
+
+```{r}
+ggplot(
+  data = resultados_finais_1, 
+  aes(x = leitura, y = percentagem_reducao, color = tratamento, group = tratamento)
+  ) +
+  
+  # Adiciona as linhas que conectam os pontos
+  geom_line(linewidth = 1) +
+  
+  # Adiciona os pontos para marcar as leituras exatas
+  geom_point(size = 3, alpha = 0.8) +
+  
+  # CRIA PAINÉIS SEPARADOS PARA CADA "MEIO"
+  facet_grid(concentracao~ meio) +
+  
+  # Linha de referência horizontal (opcional, mas útil)
+  geom_hline(yintercept = 100, linetype = "dashed", color = "grey50") +
+  
+  # Melhora os rótulos e títulos
+  labs(
+    title = "Evolução do Percentual de Redução da Resazurina",
+    subtitle = "Comparação entre tratamentos em diferentes meios de cultura",
+    x = "Tempo de Leitura",
+    y = "Percentual de Redução (%)",
+    color = "Tratamento"
+  ) +
+  
+  # Garante que o eixo Y comece no zero
+  scale_y_continuous(limits = c(0, NA)) +
+  
+  # Aplica um tema visual limpo
+  theme_bw()
+
+```
+
+```{r}
+ggplot(
+  data = resultados_finais_1, 
+  aes(x = leitura, y = percentagem_reducao, color = tratamento, group = tratamento)
+  ) +
+  geom_smooth()+
+  
+  # CRIA PAINÉIS SEPARADOS PARA CADA "MEIO"
+  facet_grid(concentracao~ meio) +
+  
+  # Melhora os rótulos e títulos
+  labs(
+    title = "Evolução do Percentual de Redução da Resazurina",
+    subtitle = "Comparação entre tratamentos em diferentes meios de cultura",
+    x = "Tempo de Leitura",
+    y = "Percentual de Redução (%)",
+    color = "Tratamento"
+  ) +
+  
+  # Garante que o eixo Y comece no zero
+  scale_y_continuous(limits = c(0, NA)) +
+  
+  # Aplica um tema visual limpo
+  theme_bw()
+
+```

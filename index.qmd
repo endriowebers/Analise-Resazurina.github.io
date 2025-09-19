@@ -1,11 +1,5 @@
 ---
-title: "Analise-Resazurina.github.io"
+title: "Analise experimentos com Resazurina" # if using a built-in template, this title appears under your photo
+subtitle: "endriowebers@gmail.com"
+ 
 ---
-
-This is a Quarto website.
-
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
-
-```{r}
-1 + 1
-```

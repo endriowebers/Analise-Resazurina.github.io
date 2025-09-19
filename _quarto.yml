@@ -4,10 +4,14 @@ project:
 website:
   title: "Analise-Resazurina.github.io"
   navbar:
-    left:
-      - href: index.qmd
-        text: Home
-      - about.qmd
+    title: "Analise Resazurina" # this is the website title as it appears in the top left corner -- clicking on this will jump you back to your landing page from where ever you are
+    right:  # align navbar items to the right/left/center
+      - href: Colle 1.qmd
+        text: Experimento 1
+      - href: Colle 2.qmd
+        text: Experimento 2
+      - icon: github # add icons that link to social media, etc.
+        href: https://github.com/endriowebers
 
 format:
   html:
@@ -16,4 +20,10 @@ format:
     toc: true
 
 
-
+page-footer:
+    background: light # or dark
+    left:
+      - "Copyright 2025, Endrio Webers"
+    right:
+      - icon: github
+        href: https://github.com/endriowebers
